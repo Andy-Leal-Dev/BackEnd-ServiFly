@@ -17,11 +17,17 @@ db.serialize(() => {
     CREATE TABLE IF NOT EXISTS usuarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nombre TEXT NOT NULL,
-      telefono TEXT NOT NULL UNIQUE,
+      telefono TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
-      rol TEXT DEFAULT 'user',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      fecha_nacimiento DATE,
+      foto_perfil VARCHAR
+      fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+      ultimo_login DATETIME,
+      is_active BOOLEAN DEFAULT TRUE,
+      is_professional BOOLEAN DEFAULT FALSE,
+      id_profesional INTEGER,
+      FOREIGN KEY (id_profesional) REFERENCES Profesionales(id)
     )
   `);
 });
