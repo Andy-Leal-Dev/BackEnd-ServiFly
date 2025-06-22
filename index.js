@@ -4,6 +4,7 @@ const express = require('express');
 const app = express();
 
 const authRoutes = require('./routes/authRoutes');
+const userRouter = require('./routes/userRoutes');
 
 app.use(express.json());
 
@@ -14,6 +15,7 @@ app.use((req, res, next) => {
 
 // Usa las rutas
 app.use('/', authRoutes);
+app.use('/user', userRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
