@@ -10,7 +10,7 @@ Aquí encontrarás la configuración básica para instalar, ejecutar y contribui
 1. Clona el repositorio:
 
 ```bash
-git clone https://github.com/tu-usuario/BackEnd-ServiFly.git
+git clone https://github.com/Andy-Leal-Dev/BackEnd-ServiFly.git
 cd BackEnd-ServiFly
 ```
 
