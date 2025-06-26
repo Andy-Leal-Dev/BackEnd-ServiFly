@@ -21,12 +21,14 @@ db.serialize(() => {
       email TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
       fecha_nacimiento DATE,
-      foto_perfil VARCHAR
+      foto_perfil VARCHAR,
       fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
       ultimo_login DATETIME,
       is_active BOOLEAN DEFAULT TRUE,
       is_professional BOOLEAN DEFAULT FALSE,
       id_profesional INTEGER,
+      idgoogle INTEGER,
+      emailverify INTEGER,
       FOREIGN KEY (id_profesional) REFERENCES Profesionales(id)
     )
   `);

@@ -15,7 +15,7 @@ exports.register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
         const query = `INSERT INTO usuarios (nombre, telefono, email, password, fecha_nacimiento) VALUES (?, ?, ?, ?, ?)`;
-        db.run(query, [nombre, telefono, email, hashedPassword], function (err) {
+        db.run(query, [nombre, telefono, email, hashedPassword, fecha_nacimiento], function (err) {
             if (err) {
                 if (err.message.includes('email')){
                     return res.status(400).json({ error: 'Email ya registrado' });
