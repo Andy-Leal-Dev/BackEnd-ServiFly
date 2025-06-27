@@ -28,6 +28,7 @@ db.serialize(() => {
       is_professional BOOLEAN DEFAULT FALSE,
       id_profesional INTEGER,
       idgoogle INTEGER,
+      codeverify INTEGER,
       emailverify INTEGER,
       FOREIGN KEY (id_profesional) REFERENCES Profesionales(id)
     )

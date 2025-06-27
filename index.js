@@ -5,9 +5,10 @@ const app = express();
 
 const authRoutes = require('./routes/authRoutes');
 const userRouter = require('./routes/userRoutes');
+const morgan = require('morgan');
 
 app.use(express.json());
-
+app.use(morgan('dev'))
 app.use((req, res, next) => {
     console.log('Body recibido:', req.body);
     next();
