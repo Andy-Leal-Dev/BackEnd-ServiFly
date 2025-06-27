@@ -67,7 +67,7 @@ exports.verifyCode = (req, res) => {
         }
         if (row.codeverify && row.codeverify.toString() === code.toString()) {
             // Actualiza is_active a TRUE y limpia el codeverify
-            db.run(`UPDATE usuarios SET is_active = 1, codeverify = NULL WHERE email = ?`, [email], (err2) => {
+            db.run(`UPDATE usuarios SET is_active = 1, codeverify = NULL, emailverify = 1 WHERE email = ?`, [email], (err2) => {
                 if (err2) {
                     return res.status(500).json({ error: 'No se pudo activar el usuario' });
                 }
@@ -108,5 +108,60 @@ exports.login = async (req, res) => {
             },
             token
         });
+    });
+};
+
+// Endpoint para solicitar recuperación de contraseña (envía código al email)
+exports.forgotPassword = (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email requerido' });
+
+    db.get(`SELECT * FROM usuarios WHERE email = ?`, [email], (err, user) => {
+        if (err) return res.status(500).json({ error: 'Error en la base de datos' });
+        if (!user) return res.status(404).json({ error: 'Email no encontrado' });
+
+        const code = Math.floor(100000 + Math.random() * 900000);
+        db.run(`UPDATE usuarios SET codeverify = ? WHERE email = ?`, [code, email], (err2) => {
+            if (err2) return res.status(500).json({ error: 'No se pudo guardar el código' });
+
+            transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: 'Código para restablecer contraseña',
+                text: `Tu código para restablecer la contraseña es: ${code}`,
+            }, (error) => {
+                if (error) return res.status(500).json({ error: 'No se pudo enviar el código' });
+                res.status(200).json({ message: 'Código enviado al correo' });
+            });
+        });
+    });
+};
+
+// Endpoint para verificar el código de recuperación
+exports.verifyResetCode = (req, res) => {
+    const { email, code } = req.body;
+    if (!email || !code) return res.status(400).json({ error: 'Datos incompletos' });
+
+    db.get(`SELECT codeverify FROM usuarios WHERE email = ?`, [email], (err, row) => {
+        if (err || !row) return res.status(400).json({ error: 'Usuario no encontrado' });
+        if (row.codeverify && row.codeverify.toString() === code.toString()) {
+            return res.status(200).json({ message: 'Código correcto' });
+        } else {
+            return res.status(400).json({ error: 'Código incorrecto' });
+        }
+    });
+};
+
+// Endpoint para cambiar la contraseña
+exports.resetPassword = async (req, res) => {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword) {
+        return res.status(400).json({ error: 'Datos incompletos' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    db.run(`UPDATE usuarios SET password = ?, codeverify = NULL WHERE email = ?`, [hashedPassword, email], (err) => {
+        if (err) return res.status(500).json({ error: 'No se pudo actualizar la contraseña' });
+        return res.status(200).json({ message: 'Contraseña actualizada correctamente' });
     });
 };
