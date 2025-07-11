@@ -58,6 +58,7 @@ exports.getMyProfileProfesional = (req, res) => {
             Usuarios.email,
             Usuarios.telefono,
             Usuarios.foto_perfil,
+            Usuarios.is_verified,
             GROUP_CONCAT(DISTINCT Oficios.nombre) AS oficios,
             GROUP_CONCAT(DISTINCT Especialidades.nombre) AS especialidades,
             GROUP_CONCAT(DISTINCT Prof_MetodoPago.metodo_pago) AS metodos_pago
