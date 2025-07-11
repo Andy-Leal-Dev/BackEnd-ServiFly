@@ -5,18 +5,26 @@ const app = express();
 
 const authRoutes = require('./routes/authRoutes');
 const userRouter = require('./routes/userRoutes');
+const professionalRouter = require('./routes/professionalRoutes')
 const morgan = require('morgan');
-
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads/profiles', express.static(path.join(__dirname, 'profiles')));
+app.use('/uploads/profile/temp', express.static(path.join(__dirname, 'profile/temp')));
 app.use(express.json());
 app.use(morgan('dev'))
 app.use((req, res, next) => {
     console.log('Body recibido:', req.body);
     next();
 });
-
+app.use((req, res, next) => {
+    console.log('Body recibido:', res.json.toString);
+    next();
+});
 // Usa las rutas
 app.use('/', authRoutes);
 app.use('/user', userRouter);
+app.use('/professional', professionalRouter)
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
