@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const db = require('../db/login');
+const db = require('../db/users');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -60,7 +60,7 @@ exports.register = async (req, res) => {
 exports.verifyCode = (req, res) => {
     const { email, code } = req.body;
     if (!email || !code) return res.status(400).json({ error: 'Datos incompletos' });
-
+console.log('Verificando código para email:', email, 'con código:', code);
     db.get(`SELECT codeverify FROM usuarios WHERE email = ?`, [email], (err, row) => {
         if (err || !row) {
             return res.status(400).json({ error: 'Usuario no encontrado' });
@@ -105,6 +105,8 @@ exports.login = async (req, res) => {
                 nombre: user.nombre,
                 telefono: user.telefono,
                 email: user.email,
+                is_active: user.is_active,
+                is_professional: user.is_professional,
             },
             token
         });
