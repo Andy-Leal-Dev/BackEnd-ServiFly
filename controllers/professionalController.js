@@ -273,3 +273,67 @@ exports.getKYCStatus = (req, res) => {
         }
     );
 };
+
+exports.getList = (req, res) => {
+    const query = `
+        SELECT 
+            u.id AS userId,
+            u.nombre,
+            u.email,
+            u.telefono,
+            u.foto_perfil AS userPhoto,
+            p.id AS professionalId,
+            p.descripcion,
+            p.experiencia,
+            p.educacion,
+            p.certificaciones,
+            p.tarifa_por_hora AS ratePerHour,
+            p.radio_servicio AS serviceRadius,
+            p.disponibilidad AS availability,
+            p.promedio_calificacion AS averageRating,
+            p.total_resenias AS totalReviews,
+            p.is_verificado AS isVerified,
+            GROUP_CONCAT(DISTINCT o.nombre) AS professions,
+            GROUP_CONCAT(DISTINCT e.nombre) AS specialties,
+            GROUP_CONCAT(DISTINCT mp.metodo_pago) AS paymentMethods
+        FROM usuarios u
+        JOIN Profesionales p ON u.id_profesional = p.id
+        LEFT JOIN Prof_Oficio po ON p.id = po.id_profesional
+        LEFT JOIN Oficios o ON po.id_oficio = o.id
+        LEFT JOIN Prof_Especialidad pe ON p.id = pe.id_profesional
+        LEFT JOIN Especialidades e ON pe.id_especialidad = e.id
+        LEFT JOIN Prof_MetodoPago mp ON p.id = mp.id_profesional
+        WHERE u.is_professional = 1
+        GROUP BY u.id, p.id
+    `;
+
+    db.all(query, [], (err, rows) => {
+        if (err) return handleDbError(res, err, 'Error obteniendo profesionales');
+        
+        const professionals = rows.map(row => {
+            return {
+                userId: row.userId,
+                name: row.nombre,
+                email: row.email,
+                phone: row.telefono,
+                userPhoto: row.userPhoto,
+                professionalId: row.professionalId,
+                description: row.descripcion,
+                experience: row.experiencia,
+                education: row.educacion,
+                certifications: row.certificaciones,
+                ratePerHour: row.ratePerHour,
+                serviceRadius: row.serviceRadius,
+                availability: row.availability,
+                averageRating: row.averageRating,
+                totalReviews: row.totalReviews,
+                isVerified: row.isVerified,
+                professions: row.professions ? row.professions.split(',') : [],
+                specialties: row.specialties ? row.specialties.split(',') : [],
+                paymentMethods: row.paymentMethods ? row.paymentMethods.split(',') : []
+            };
+        });
+
+        res.status(200).json(professionals);
+    });
+};

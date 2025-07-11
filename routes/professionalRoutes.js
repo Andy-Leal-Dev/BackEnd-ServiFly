@@ -27,4 +27,7 @@ router.post(
 // Obtener estado de verificación KYC
 router.get('/kyc/status', authenticationToken, professionalController.getKYCStatus);
 
+// obtener all professionals
+router.get('/ProList',professionalController.getList )
+
 module.exports = router;
