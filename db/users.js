@@ -36,13 +36,7 @@ db.serialize(() => {
     )
   `);
   
-  // Verificar y agregar columna si no existe (para migraciones) ESTO ES OPCIONAL, andy elige tu si se mantiene esto o q
-  db.get("PRAGMA table_info(usuarios)", (err, columns) => {
-    const hasIsBlocked = columns.some(col => col.name === 'is_blocked');
-    if (!hasIsBlocked) {
-      db.run("ALTER TABLE usuarios ADD COLUMN is_blocked BOOLEAN DEFAULT FALSE");
-    }
-  });
+ 
 
   // Tabla para ubicación en tiempo real
   db.run(`
@@ -93,34 +87,7 @@ db.run(`
   )
 `);
 
-// Tabla para historial de cambios de estado
-db.run(`
-  CREATE TABLE IF NOT EXISTS ServicioHistorial (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_servicio INTEGER NOT NULL,
-    estado_anterior TEXT,
-    estado_nuevo TEXT NOT NULL,
-    fecha_cambio DATETIME DEFAULT CURRENT_TIMESTAMP,
-    motivo_cambio TEXT,
-    id_usuario_cambio INTEGER, 
-    FOREIGN KEY (id_servicio) REFERENCES Servicios(id) ON DELETE CASCADE,
-    FOREIGN KEY (id_usuario_cambio) REFERENCES usuarios(id) ON DELETE SET NULL
-  )
-`);
 
-// Tabla para mensajes relacionados con un servicio
-db.run(`
-  CREATE TABLE IF NOT EXISTS ServicioMensajes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_servicio INTEGER NOT NULL,
-    id_usuario INTEGER NOT NULL,  
-    mensaje TEXT NOT NULL,
-    fecha_envio DATETIME DEFAULT CURRENT_TIMESTAMP,
-    leido BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (id_servicio) REFERENCES Servicios(id) ON DELETE CASCADE,
-    FOREIGN KEY (id_usuario) REFERENCES usuarios(id) ON DELETE CASCADE
-  )
-`);
   // Crear índice para búsquedas más rápidas
   db.run(`
     CREATE INDEX IF NOT EXISTS idx_ubicacion_usuario 
