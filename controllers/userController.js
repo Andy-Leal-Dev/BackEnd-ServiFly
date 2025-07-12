@@ -681,4 +681,392 @@ exports.removeFavorite = (req, res) => {
 
         res.status(200).json({ message: 'Profesional eliminado de favoritos exitosamente' });
     });
+
+}
+// userController.js - Agregar este nuevo método
+
+exports.updateUserLocation = async (req, res) => {
+    const userId = req.user.id;
+    const { latitud, longitud, precision } = req.body;
+
+    // Validación de campos requeridos
+    if (!latitud || !longitud) {
+        return res.status(400).json({ 
+            error: 'Latitud y longitud son requeridas',
+            details: 'Debes proporcionar ambas coordenadas para actualizar la ubicación'
+        });
+    }
+
+    try {
+        // Verificar si ya existe una ubicación para este usuario
+        const existingLocation = await new Promise((resolve, reject) => {
+            db.get(
+                `SELECT id FROM UbicacionTiempoReal WHERE id_usuario = ?`,
+                [userId],
+                (err, row) => err ? reject(err) : resolve(row)
+            );
+        });
+
+        let query, params;
+        let isNew = false;
+
+        if (existingLocation) {
+            // Actualizar ubicación existente
+            query = `
+                UPDATE UbicacionTiempoReal 
+                SET latitud = ?, longitud = ?, precision = ?
+                WHERE id_usuario = ?
+            `;
+            params = [latitud, longitud, precision || null, userId];
+        } else {
+            // Crear nueva ubicación
+            query = `
+                INSERT INTO UbicacionTiempoReal 
+                (id_usuario, latitud, longitud, precision)
+                VALUES (?, ?, ?, ?)
+            `;
+            params = [userId, latitud, longitud, precision || null];
+            isNew = true;
+        }
+
+        // Ejecutar la consulta
+        await new Promise((resolve, reject) => {
+            db.run(query, params, (err) => {
+                if (err) reject(err);
+                resolve();
+            });
+        });
+
+        // Obtener los datos actualizados para la respuesta
+        const updatedLocation = await new Promise((resolve, reject) => {
+            db.get(
+                `SELECT id, id_usuario, latitud, longitud, precision
+                 FROM UbicacionTiempoReal 
+                 WHERE id_usuario = ?`,
+                [userId],
+                (err, row) => err ? reject(err) : resolve(row)
+            );
+        });
+
+        res.status(200).json({
+            success: true,
+            message: isNew ? 'Ubicación creada exitosamente' : 'Ubicación actualizada exitosamente',
+            data: updatedLocation
+        });
+
+    } catch (error) {
+        console.error('Error en updateUserLocation:', error);
+        res.status(500).json({
+            error: 'Error del servidor',
+            details: 'No se pudo actualizar la ubicación',
+            systemError: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+}
+
+
+// userController.js (nuevos métodos para direcciones guardadas)
+
+// Obtener todas las direcciones guardadas del usuario
+exports.getSavedAddresses = (req, res) => {
+    const userId = req.user.id;
+
+    const query = `
+        SELECT 
+            id, nombre, direccion, latitud, longitud, pais, is_principal,
+            strftime('%Y-%m-%d %H:%M:%S', fecha_creacion) as fecha_creacion
+        FROM UbicacionesGuardadas 
+        WHERE id_usuario = ?
+        ORDER BY is_principal DESC, fecha_creacion DESC
+    `;
+
+    db.all(query, [userId], (err, addresses) => {
+        if (err) return handleDbError(res, err);
+        
+        // Formatear la respuesta para que coincida con la app Flutter
+        const formattedAddresses = addresses.map(address => ({
+            id: address.id,
+            title: address.nombre,
+            address: address.direccion,
+            latitude: address.latitud,
+            longitude: address.longitud,
+            country: address.pais,
+            isPrimary: address.is_principal === 1,
+            createdAt: address.fecha_creacion
+        }));
+
+        res.status(200).json(formattedAddresses);
+    });
+};
+
+// Agregar una nueva dirección guardada
+exports.addSavedAddress = (req, res) => {
+    const userId = req.user.id;
+    const { 
+        title: nombre, 
+        address: direccion, 
+        latitude: latitud, 
+        longitude: longitud, 
+        country: pais = 'Venezuela',
+        isPrimary: is_principal = false
+    } = req.body;
+
+    // Validaciones básicas
+    if (!nombre || !direccion || !latitud || !longitud) {
+        return res.status(400).json({ 
+            error: 'Nombre, dirección y coordenadas son requeridos',
+            details: {
+                missingFields: {
+                    title: !nombre,
+                    address: !direccion,
+                    coordinates: !latitud || !longitud
+                }
+            }
+        });
+    }
+
+    // Si se marca como principal, primero desmarcar cualquier otra dirección principal
+    const updatePrincipalQuery = `
+        UPDATE UbicacionesGuardadas 
+        SET is_principal = 0 
+        WHERE id_usuario = ? AND is_principal = 1
+    `;
+
+    const insertQuery = `
+        INSERT INTO UbicacionesGuardadas (
+            id_usuario, nombre, direccion, latitud, longitud, pais, is_principal
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    db.serialize(() => {
+        if (is_principal) {
+            db.run(updatePrincipalQuery, [userId], (err) => {
+                if (err) return handleDbError(res, err);
+            });
+        }
+
+        db.run(insertQuery, [
+            userId, nombre, direccion, latitud, longitud, pais, is_principal ? 1 : 0
+        ], function(err) {
+            if (err) return handleDbError(res, err);
+
+            // Obtener la dirección recién creada
+            db.get(`
+                SELECT id, nombre, direccion, latitud, longitud, pais, is_principal,
+                       strftime('%Y-%m-%d %H:%M:%S', fecha_creacion) as fecha_creacion
+                FROM UbicacionesGuardadas 
+                WHERE id = ?
+            `, [this.lastID], (err, address) => {
+                if (err) return handleDbError(res, err);
+
+                res.status(201).json({
+                    message: 'Dirección guardada exitosamente',
+                    address: {
+                        id: address.id,
+                        title: address.nombre,
+                        address: address.direccion,
+                        latitude: address.latitud,
+                        longitude: address.longitud,
+                        country: address.pais,
+                        isPrimary: address.is_principal === 1,
+                        createdAt: address.fecha_creacion
+                    }
+                });
+            });
+        });
+    });
+};
+
+// Actualizar una dirección guardada
+exports.updateSavedAddress = (req, res) => {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { 
+        title: nombre, 
+        address: direccion, 
+        latitude: latitud, 
+        longitude: longitud, 
+        country: pais,
+        isPrimary: is_principal
+    } = req.body;
+
+    // Validaciones básicas
+    if (!nombre || !direccion || !latitud || !longitud) {
+        return res.status(400).json({ 
+            error: 'Nombre, dirección y coordenadas son requeridos',
+            details: {
+                missingFields: {
+                    title: !nombre,
+                    address: !direccion,
+                    coordinates: !latitud || !longitud
+                }
+            }
+        });
+    }
+
+    // Primero verificar que la dirección pertenece al usuario
+    db.get(`
+        SELECT id, is_principal 
+        FROM UbicacionesGuardadas 
+        WHERE id = ? AND id_usuario = ?
+    `, [id, userId], (err, address) => {
+        if (err) return handleDbError(res, err);
+        if (!address) {
+            return res.status(404).json({ 
+                error: 'Dirección no encontrada o no tienes permiso' 
+            });
+        }
+
+        // Si se marca como principal y no lo era antes, 
+        // primero desmarcar cualquier otra dirección principal
+        const updatePrincipalQuery = `
+            UPDATE UbicacionesGuardadas 
+            SET is_principal = 0 
+            WHERE id_usuario = ? AND is_principal = 1 AND id != ?
+        `;
+
+        const updateQuery = `
+            UPDATE UbicacionesGuardadas 
+            SET 
+                nombre = ?, 
+                direccion = ?, 
+                latitud = ?, 
+                longitud = ?, 
+                pais = ?,
+                is_principal = ?
+            WHERE id = ?
+        `;
+
+        db.serialize(() => {
+            if (is_principal && !address.is_principal) {
+                db.run(updatePrincipalQuery, [userId, id], (err) => {
+                    if (err) return handleDbError(res, err);
+                });
+            }
+
+            db.run(updateQuery, [
+                nombre, 
+                direccion, 
+                latitud, 
+                longitud, 
+                pais || 'Venezuela',
+                is_principal ? 1 : 0,
+                id
+            ], (err) => {
+                if (err) return handleDbError(res, err);
+
+                // Obtener la dirección actualizada
+                db.get(`
+                    SELECT id, nombre, direccion, latitud, longitud, pais, is_principal,
+                           strftime('%Y-%m-%d %H:%M:%S', fecha_creacion) as fecha_creacion
+                    FROM UbicacionesGuardadas 
+                    WHERE id = ?
+                `, [id], (err, updatedAddress) => {
+                    if (err) return handleDbError(res, err);
+
+                    res.status(200).json({
+                        message: 'Dirección actualizada exitosamente',
+                        address: {
+                            id: updatedAddress.id,
+                            title: updatedAddress.nombre,
+                            address: updatedAddress.direccion,
+                            latitude: updatedAddress.latitud,
+                            longitude: updatedAddress.longitud,
+                            country: updatedAddress.pais,
+                            isPrimary: updatedAddress.is_principal === 1,
+                            createdAt: updatedAddress.fecha_creacion
+                        }
+                    });
+                });
+            });
+        });
+    });
+};
+
+// Eliminar una dirección guardada
+exports.deleteSavedAddress = (req, res) => {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    // Verificar que la dirección pertenece al usuario
+    db.get(`
+        SELECT id, is_principal 
+        FROM UbicacionesGuardadas 
+        WHERE id = ? AND id_usuario = ?
+    `, [id, userId], (err, address) => {
+        if (err) return handleDbError(res, err);
+        if (!address) {
+            return res.status(404).json({ 
+                error: 'Dirección no encontrada o no tienes permiso' 
+            });
+        }
+
+        // Si es la dirección principal, no permitir eliminarla
+        if (address.is_principal) {
+            return res.status(400).json({ 
+                error: 'No puedes eliminar tu dirección principal',
+                details: 'Primero asigna otra dirección como principal'
+            });
+        }
+
+        db.run(`DELETE FROM UbicacionesGuardadas WHERE id = ?`, [id], function(err) {
+            if (err) return handleDbError(res, err);
+
+            if (this.changes === 0) {
+                return res.status(404).json({ 
+                    error: 'Dirección no encontrada' 
+                });
+            }
+
+            res.status(200).json({ 
+                message: 'Dirección eliminada exitosamente',
+                deletedId: id
+            });
+        });
+    });
+};
+
+// Establecer una dirección como principal
+exports.setAsPrimaryAddress = (req, res) => {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    // Verificar que la dirección pertenece al usuario
+    db.get(`
+        SELECT id 
+        FROM UbicacionesGuardadas 
+        WHERE id = ? AND id_usuario = ?
+    `, [id, userId], (err, address) => {
+        if (err) return handleDbError(res, err);
+        if (!address) {
+            return res.status(404).json({ 
+                error: 'Dirección no encontrada o no tienes permiso' 
+            });
+        }
+
+        db.serialize(() => {
+            // Primero desmarcar todas las direcciones como principales
+            db.run(`
+                UPDATE UbicacionesGuardadas 
+                SET is_principal = 0 
+                WHERE id_usuario = ?
+            `, [userId], (err) => {
+                if (err) return handleDbError(res, err);
+            });
+
+            // Luego marcar la dirección seleccionada como principal
+            db.run(`
+                UPDATE UbicacionesGuardadas 
+                SET is_principal = 1 
+                WHERE id = ?
+            `, [id], function(err) {
+                if (err) return handleDbError(res, err);
+
+                res.status(200).json({ 
+                    message: 'Dirección principal actualizada exitosamente',
+                    primaryAddressId: id
+                });
+            });
+        });
+    });
 };
