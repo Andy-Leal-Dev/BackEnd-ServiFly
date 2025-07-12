@@ -10,13 +10,12 @@ router.post('/create', authenticationToken, serviceController.createService);
 router.get('/:role', authenticationToken, serviceController.getUserServices);
 
 // Obtener detalles de un servicio específico
-router.get('/:id', authenticationToken, serviceController.getServiceDetails);
+router.get('/by/:id', authenticationToken, serviceController.getServiceById);
 
 // Actualizar estado de un servicio
 router.put('/:id/status', authenticationToken, serviceController.updateServiceStatus);
 
-// Enviar mensaje en un servicio
-router.post('/:id/messages', authenticationToken, serviceController.sendServiceMessage);
+
 
 // Calificar un servicio completado
 router.post('/:id/rate', authenticationToken, serviceController.rateService);

@@ -417,7 +417,7 @@ exports.updateServiceStatus = async (req, res) => {
     const { estado, motivo } = req.body;
 
     // Validar estado
-    const estadosPermitidos = ['pendiente', 'confirmado', 'en_progreso', 'completado', 'cancelado', 'rechazado'];
+    const estadosPermitidos = ['pendiente', 'aceptado', 'completado', 'cancelado', 'rechazado'];
     if (!estadosPermitidos.includes(estado)) {
         return res.status(400).json({ error: 'Estado no válido' });
     }
@@ -449,13 +449,6 @@ exports.updateServiceStatus = async (req, res) => {
         if (!puedeModificar) {
             return res.status(403).json({ error: 'No tienes permiso para modificar este servicio' });
         }
-
-        await new Promise((resolve, reject) => {
-            db.run('BEGIN TRANSACTION', (err) => {
-                if (err) reject(err);
-                resolve();
-            });
-        });
 
         // Actualizar el servicio
         await new Promise((resolve, reject) => {
@@ -489,12 +482,6 @@ exports.updateServiceStatus = async (req, res) => {
             });
         });
 
-        await new Promise((resolve, reject) => {
-            db.run('COMMIT', (err) => {
-                if (err) reject(err);
-                resolve();
-            });
-        });
 
         // Obtener el servicio actualizado para la respuesta
         const servicioActualizado = await new Promise((resolve, reject) => {
@@ -521,194 +508,156 @@ exports.updateServiceStatus = async (req, res) => {
 };
 
 // Obtener detalles de un servicio específico
-exports.getServiceDetails = async (req, res) => {
+exports.getServiceById = async (req, res) => {
+    // Verificar autenticación
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({
+            success: false,
+            error: 'No autenticado',
+            message: 'Debe iniciar sesión para acceder a este recurso',
+        });
+    }
+
     const userId = req.user.id;
     const { id } = req.params;
 
     try {
-        // Obtener el servicio
+        // 1. Obtener información básica del servicio
         const servicio = await new Promise((resolve, reject) => {
             db.get(`
                 SELECT 
-                    s.*,
-                    uc.nombre as cliente_nombre,
-                    uc.foto_perfil as cliente_foto,
-                    up.nombre as profesional_nombre,
-                    up.foto_perfil as profesional_foto,
-                    p.descripcion as profesional_descripcion,
-                    p.tarifa_por_hora,
-                    GROUP_CONCAT(DISTINCT o.nombre) as oficios,
-                    ug.nombre as ubicacion_nombre,
-                    ug.direccion as ubicacion_direccion,
-                    ug.latitud as ubicacion_latitud,
-                    ug.longitud as ubicacion_longitud
+                    s.id,
+                    s.fecha_creacion,
+                    s.fecha_servicio,
+                    s.hora_servicio,
+                    s.notas_adicionales,
+                    s.estado,
+                    s.motivo_cancelacion,
+
+                    s.id_cliente,
+                    s.id_profesional,
+                    s.id_ubicacion,
+                    ug.nombre AS ubicacion_nombre,
+                    ug.direccion AS ubicacion_direccion,
+                    ug.latitud AS ubicacion_latitud,
+                    ug.longitud AS ubicacion_longitud
                 FROM Servicios s
-                JOIN usuarios uc ON s.id_cliente = uc.id
-                JOIN Profesionales p ON s.id_profesional = p.id
-                JOIN usuarios up ON p.id_usuario = up.id
-                LEFT JOIN Prof_Oficio po ON p.id = po.id_profesional
-                LEFT JOIN Oficios o ON po.id_oficio = o.id
                 LEFT JOIN UbicacionesGuardadas ug ON s.id_ubicacion = ug.id
                 WHERE s.id = ?
-                GROUP BY s.id
             `, [id], (err, row) => {
-                if (err) reject(err);
+                if (err) return reject(err);
                 resolve(row);
             });
         });
 
         if (!servicio) {
-            return res.status(404).json({ error: 'Servicio no encontrado' });
+            return res.status(404).json({
+                success: false,
+                error: 'Servicio no encontrado',
+                message: 'El servicio solicitado no existe'
+            });
         }
 
-        // Verificar permisos (solo cliente o profesional asociado pueden ver)
-        const profesional = await new Promise((resolve, reject) => {
-            db.get('SELECT id FROM Profesionales WHERE id_usuario = ?', [userId], (err, row) => {
-                if (err) reject(err);
+        // Verificar permisos
+        const esCliente = servicio.id_cliente === userId;
+        const esProfesional = servicio.id_profesional === userId;
+
+        if (!esCliente && !esProfesional) {
+            return res.status(403).json({
+                success: false,
+                error: 'Acceso denegado',
+                message: 'No tienes permiso para ver este servicio'
+            });
+        }
+
+        // 2. Obtener datos del cliente (en paralelo)
+        const clientePromise = new Promise((resolve, reject) => {
+            db.get(`
+                SELECT id, nombre, foto_perfil AS foto
+                FROM usuarios
+                WHERE id = ?
+            `, [servicio.id_cliente], (err, row) => {
+                if (err) return reject(err);
                 resolve(row);
             });
         });
 
-        const puedeVer = servicio.id_cliente === userId || 
-                        (profesional && profesional.id === servicio.id_profesional);
-
-        if (!puedeVer) {
-            return res.status(403).json({ error: 'No tienes permiso para ver este servicio' });
-        }
-
-        // Obtener historial de estados
-        const historial = await new Promise((resolve, reject) => {
-            db.all(`
-                SELECT 
-                    sh.*,
-                    u.nombre as usuario_nombre
-                FROM ServicioHistorial sh
-                LEFT JOIN usuarios u ON sh.id_usuario_cambio = u.id
-                WHERE sh.id_servicio = ?
-                ORDER BY sh.fecha_cambio DESC
-            `, [id], (err, rows) => {
-                if (err) reject(err);
-                resolve(rows);
-            });
-        });
-
-        // Obtener mensajes
-        const mensajes = await new Promise((resolve, reject) => {
-            db.all(`
-                SELECT 
-                    sm.*,
-                    u.nombre as usuario_nombre,
-                    u.foto_perfil as usuario_foto
-                FROM ServicioMensajes sm
-                JOIN usuarios u ON sm.id_usuario = u.id
-                WHERE sm.id_servicio = ?
-                ORDER BY sm.fecha_envio ASC
-            `, [id], (err, rows) => {
-                if (err) reject(err);
-                resolve(rows);
-            });
-        });
-
-        // Formatear respuesta
-        const response = {
-            ...servicio,
-            oficios: servicio.oficios ? servicio.oficios.split(',') : [],
-            historial,
-            mensajes,
-            ubicacion: servicio.ubicacion_latitud && servicio.ubicacion_longitud ? {
-                nombre: servicio.ubicacion_nombre,
-                direccion: servicio.ubicacion_direccion,
-                latitud: servicio.ubicacion_latitud,
-                longitud: servicio.ubicacion_longitud
-            } : null
-        };
-
-        // Eliminar campos innecesarios
-        delete response.ubicacion_nombre;
-        delete response.ubicacion_direccion;
-        delete response.ubicacion_latitud;
-        delete response.ubicacion_longitud;
-
-        res.status(200).json(response);
-
-    } catch (err) {
-        handleDbError(res, err, 'Error al obtener los detalles del servicio');
-    }
-};
-
-// Enviar mensaje en un servicio
-exports.sendServiceMessage = async (req, res) => {
-    const userId = req.user.id;
-    const { id } = req.params;
-    const { mensaje } = req.body;
-
-    if (!mensaje || mensaje.trim() === '') {
-        return res.status(400).json({ error: 'El mensaje no puede estar vacío' });
-    }
-
-    try {
-        // Verificar que el servicio existe y tiene permiso
-        const servicio = await new Promise((resolve, reject) => {
-            db.get('SELECT id_cliente, id_profesional FROM Servicios WHERE id = ?', [id], (err, row) => {
-                if (err) reject(err);
-                resolve(row);
-            });
-        });
-
-        if (!servicio) {
-            return res.status(404).json({ error: 'Servicio no encontrado' });
-        }
-
-        // Verificar si el usuario es el cliente o el profesional del servicio
-        const profesional = await new Promise((resolve, reject) => {
-            db.get('SELECT id FROM Profesionales WHERE id_usuario = ?', [userId], (err, row) => {
-                if (err) reject(err);
-                resolve(row);
-            });
-        });
-
-        const puedeEnviar = servicio.id_cliente === userId || 
-                          (profesional && profesional.id === servicio.id_profesional);
-
-        if (!puedeEnviar) {
-            return res.status(403).json({ error: 'No tienes permiso para enviar mensajes en este servicio' });
-        }
-
-        // Insertar el mensaje
-        const result = await new Promise((resolve, reject) => {
-            db.run(`
-                INSERT INTO ServicioMensajes (
-                    id_servicio, id_usuario, mensaje
-                ) VALUES (?, ?, ?)
-            `, [id, userId, mensaje], function(err) {
-                if (err) reject(err);
-                resolve(this);
-            });
-        });
-
-        // Obtener el mensaje recién creado para la respuesta
-        const mensajeEnviado = await new Promise((resolve, reject) => {
+        // 3. Obtener datos del profesional (en paralelo)
+        const profesionalPromise = new Promise((resolve, reject) => {
             db.get(`
                 SELECT 
-                    sm.*,
-                    u.nombre as usuario_nombre,
-                    u.foto_perfil as usuario_foto
-                FROM ServicioMensajes sm
-                JOIN usuarios u ON sm.id_usuario = u.id
-                WHERE sm.id = ?
-            `, [result.lastID], (err, row) => {
-                if (err) reject(err);
+                    u.id,
+                    p.descripcion,
+                    p.tarifa_por_hora,
+                    u.nombre,
+                    u.foto_perfil AS foto,
+                    GROUP_CONCAT(DISTINCT o.nombre) AS oficios
+                FROM Profesionales p
+                JOIN usuarios u ON p.id_usuario = u.id
+                LEFT JOIN Prof_Oficio po ON p.id = po.id_profesional
+                LEFT JOIN Oficios o ON po.id_oficio = o.id
+                WHERE u.id = ?
+                GROUP BY p.id
+            `, [servicio.id_profesional], (err, row) => {
+                if (err) return reject(err);
                 resolve(row);
             });
         });
+     
+        // Esperar a que todas las consultas terminen
+        const [cliente, profesional] = await Promise.all([clientePromise, profesionalPromise]);
+   console.log('Servicio obtenido:', servicio);
+        console.log('profeional', profesional)
+        console.log('cliente', cliente)
 
-        res.status(201).json({
-            message: 'Mensaje enviado exitosamente',
-            mensaje: mensajeEnviado
-        });
+        // Formatear la respuesta
+        const respuesta = {
+            success: true,
+            servicio: {
+                id: servicio.id,
+                fecha_creacion: servicio.fecha_creacion,
+                fecha_servicio: servicio.fecha_servicio,
+                hora_servicio: servicio.hora_servicio,
+                duracion_estimada: servicio.duracion_estimada,
+                tarifa_total: servicio.tarifa_total,
+                notas_adicionales: servicio.notas_adicionales,
+                estado: servicio.estado,
+                motivo_cancelacion: servicio.motivo_cancelacion,
+                calificacion: servicio.calificacion,
+                comentario_calificacion: servicio.comentario_calificacion,
+                ubicacion: servicio.ubicacion_latitud && servicio.ubicacion_longitud ? {
+                    nombre: servicio.ubicacion_nombre,
+                    direccion: servicio.ubicacion_direccion,
+                    latitud: servicio.ubicacion_latitud,
+                    longitud: servicio.ubicacion_longitud
+                } : null,
+                cliente: {
+                    id: cliente.id,
+                    nombre: cliente.nombre,
+                    foto: cliente.foto
+                },
+                profesional: {
+                    id: profesional.id,
+                    nombre: profesional.nombre,
+                    foto: profesional.foto,
+                    descripcion: profesional.descripcion,
+                    tarifa_por_hora: profesional.tarifa_por_hora,
+                    oficios: profesional.oficios ? profesional.oficios.split(',') : []
+                },
+                tipo: esCliente ? 'cliente' : 'proveedor'
+            }
+        };
+
+        return res.status(200).json(respuesta);
 
     } catch (err) {
-        handleDbError(res, err, 'Error al enviar el mensaje');
+        console.error('[getServiceById] Error:', err);
+        return res.status(500).json({
+            success: false,
+            error: 'Error del servidor',
+            message: 'Ocurrió un error al obtener el servicio',
+            details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 };
 
