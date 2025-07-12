@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const {GetClients,GetProfesionales,isUserBlocked} = require('../controllers/adminController');
-
-router.get('/admin/getClients',GetClients);
-router.get('/admin/getPro',GetProfesionales);
-router.get('/admin/CheckBlocked',isUserBlocked)
+const authenticationToken = require('../middlewares/authMiddleware');
+const { GetClients, GetProfesionales, isUserBlocked, toggleUserBlock } = require('../controllers/adminController');
 
 
+router.get('/getClients', authenticationToken, GetClients);
+router.get('/getPro', authenticationToken, GetProfesionales);
+router.get('/checkBlocked', authenticationToken, isUserBlocked);
+router.put('/blockUser',  authenticationToken, toggleUserBlock); // <- esta es la importante
 
 module.exports = router;

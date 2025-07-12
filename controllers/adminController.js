@@ -57,13 +57,33 @@ exports.isUserBlocked = async (userId) => {
   });
 };
 
-//  --------------------------------------------------------------------- 
-//  --------------------------------------------------------------------- 
-// dixxonnnn pilla esto :P
-// dixxonnnn pilla esto :P
-// dixxonnnn pilla esto :P
-//  --------------------------------------------------------------------- 
-//  --------------------------------------------------------------------- 
+
+
+// Bloquear o desbloquear un usuario
+exports.toggleUserBlock = (req, res) => {
+  const { userId, block } = req.body;
+
+  if (typeof userId === 'undefined' || typeof block === 'undefined') {
+    return res.status(400).json({ error: 'Faltan datos requeridos (userId y block)' });
+  }
+
+  const query = `UPDATE usuarios SET is_blocked = ? WHERE id = ?`;
+
+  db.run(query, [block ? 1 : 0, userId], function (err) {
+    if (err) {
+      console.error('Error al cambiar estado de bloqueo:', err);
+      return res.status(500).json({ error: 'Error al actualizar estado del usuario' });
+    }
+
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const status = block ? 'bloqueado' : 'desbloqueado';
+    res.status(200).json({ message: `Usuario ${status} correctamente` });
+  });
+};
+
 
 
 // Ejemplo de uso en un middleware:

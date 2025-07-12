@@ -87,8 +87,14 @@ exports.login = async (req, res) => {
             console.error('Error al buscar usuario:', err);
             return res.status(500).json({ error: 'Error al buscar usuario' });
         }
+
         if (!user) {
             return res.status(401).json({ error: 'Email no encontrado' });
+        }
+
+        // Verifica el estado de bloq de la db
+        if (user.is_blocked === 1) {
+            return res.status(403).json({ error: 'Este usuario ha sido bloqueado. Contacte al soporte.' });
         }
 
         const valid = await bcrypt.compare(password, user.password);
@@ -96,7 +102,11 @@ exports.login = async (req, res) => {
             return res.status(401).json({ error: 'Contraseña incorrecta' });
         }
 
-        const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
+        const token = jwt.sign(
+            { id: user.id, email: user.email },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
 
         res.status(200).json({
             message: 'Inicio de sesión exitoso',
@@ -112,6 +122,7 @@ exports.login = async (req, res) => {
         });
     });
 };
+
 
 // Endpoint para solicitar recuperación de contraseña (envía código al email)
 exports.forgotPassword = (req, res) => {
