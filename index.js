@@ -6,6 +6,7 @@ const app = express();
 const authRoutes = require('./routes/authRoutes');
 const userRouter = require('./routes/userRoutes');
 const professionalRouter = require('./routes/professionalRoutes')
+const serviceRouter = require('./routes/serviceRoutes');
 const morgan = require('morgan');
 const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -25,6 +26,7 @@ app.use((req, res, next) => {
 app.use('/', authRoutes);
 app.use('/user', userRouter);
 app.use('/professional', professionalRouter)
+app.use('/services', serviceRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
