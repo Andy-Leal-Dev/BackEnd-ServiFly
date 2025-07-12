@@ -66,18 +66,6 @@ exports.createService = async (req, res) => {
             });
         });
 
-        // Registrar el estado inicial en el historial
-        await new Promise((resolve, reject) => {
-            db.run(`
-                INSERT INTO ServicioHistorial (
-                    id_servicio, estado_anterior, estado_nuevo, id_usuario_cambio
-                ) VALUES (?, NULL, 'pendiente', ?)
-            `, [result.lastID, userId], (err) => {
-                if (err) reject(err);
-                resolve();
-            });
-        });
-
         // Obtener el servicio recién creado para la respuesta
         const servicio = await new Promise((resolve, reject) => {
             db.get(`
@@ -437,14 +425,14 @@ exports.updateServiceStatus = async (req, res) => {
 
         // Verificar permisos (solo cliente o profesional asociado pueden cambiar el estado)
         const profesional = await new Promise((resolve, reject) => {
-            db.get('SELECT id FROM Profesionales WHERE id_usuario = ?', [userId], (err, row) => {
+            db.get('SELECT id_usuario FROM Profesionales WHERE id_usuario = ?', [userId], (err, row) => {
                 if (err) reject(err);
                 resolve(row);
             });
         });
 
         const puedeModificar = servicio.id_cliente === userId || 
-                             (profesional && profesional.id === servicio.id_profesional);
+                             (profesional && profesional.id_usuario === servicio.id_profesional);
 
         if (!puedeModificar) {
             return res.status(403).json({ error: 'No tienes permiso para modificar este servicio' });
@@ -468,20 +456,6 @@ exports.updateServiceStatus = async (req, res) => {
                 resolve();
             });
         });
-
-        // Registrar en el historial
-        await new Promise((resolve, reject) => {
-            db.run(`
-                INSERT INTO ServicioHistorial (
-                    id_servicio, estado_anterior, estado_nuevo, 
-                    motivo_cambio, id_usuario_cambio
-                ) VALUES (?, ?, ?, ?, ?)
-            `, [id, servicio.estado, estado, motivo || null, userId], (err) => {
-                if (err) reject(err);
-                resolve();
-            });
-        });
-
 
         // Obtener el servicio actualizado para la respuesta
         const servicioActualizado = await new Promise((resolve, reject) => {

@@ -75,7 +75,8 @@ db.run(`
     hora_servicio TEXT NOT NULL,
     id_ubicacion INTEGER,
     notas_adicionales TEXT,
-    estado TEXT NOT NULL CHECK(estado IN ('pendiente', 'confirmado', 'en_progreso', 'completado', 'cancelado', 'rechazado')) DEFAULT 'pendiente',
+    estado TEXT NOT NULL CHECK(estado IN ('pendiente', 'aceptado', 'completado', 'cancelado', 'rechazado')) DEFAULT 'pendiente',
+    activo BOOLEAN DEFAULT TRUE,
     motivo_cancelacion TEXT,
     precio_total REAL,
     calificacion INTEGER CHECK(calificacion BETWEEN 1 AND 5 OR calificacion IS NULL),
@@ -86,7 +87,20 @@ db.run(`
     FOREIGN KEY (id_ubicacion) REFERENCES UbicacionesGuardadas(id) ON DELETE SET NULL
   )
 `);
-
+db.run(`
+  CREATE TABLE IF NOT EXISTS Mensajes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_servicio INTEGER NOT NULL,
+    id_remitente INTEGER NOT NULL,
+    id_destinatario INTEGER NOT NULL,
+    mensaje TEXT NOT NULL,
+    fecha_envio DATETIME DEFAULT CURRENT_TIMESTAMP,
+    leido BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (id_servicio) REFERENCES Servicios(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_remitente) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_destinatario) REFERENCES usuarios(id) ON DELETE CASCADE
+  )
+`);
 
   // Crear índice para búsquedas más rápidas
   db.run(`
