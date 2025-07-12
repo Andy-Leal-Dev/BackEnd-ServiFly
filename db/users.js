@@ -13,7 +13,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
 });
 
 db.serialize(() => {
-  db.run(`
+   db.run(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nombre TEXT NOT NULL,
@@ -35,6 +35,95 @@ db.serialize(() => {
     )
   `);
 
+  // Tabla para ubicación en tiempo real
+  db.run(`
+    CREATE TABLE IF NOT EXISTS UbicacionTiempoReal (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_usuario INTEGER NOT NULL,
+      latitud REAL NOT NULL,
+      longitud REAL NOT NULL,
+      precision REAL,
+      FOREIGN KEY (id_usuario) REFERENCES usuarios(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Tabla para ubicaciones guardadas de usuarios
+  db.run(`
+    CREATE TABLE IF NOT EXISTS UbicacionesGuardadas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_usuario INTEGER NOT NULL,
+      nombre TEXT NOT NULL,
+      direccion TEXT NOT NULL,
+      latitud REAL NOT NULL,
+      longitud REAL NOT NULL,
+      pais TEXT DEFAULT 'Venezuela',
+      is_principal BOOLEAN DEFAULT FALSE,
+      fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (id_usuario) REFERENCES usuarios(id) ON DELETE CASCADE
+    )
+  `);
+db.run(`
+  CREATE TABLE IF NOT EXISTS Servicios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_cliente INTEGER NOT NULL,
+    id_profesional INTEGER NOT NULL,
+    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    fecha_servicio DATETIME NOT NULL,
+    hora_servicio TEXT NOT NULL,
+    id_ubicacion INTEGER,
+    notas_adicionales TEXT,
+    estado TEXT NOT NULL CHECK(estado IN ('pendiente', 'confirmado', 'en_progreso', 'completado', 'cancelado', 'rechazado')) DEFAULT 'pendiente',
+    motivo_cancelacion TEXT,
+    precio_total REAL,
+    calificacion INTEGER CHECK(calificacion BETWEEN 1 AND 5 OR calificacion IS NULL),
+    comentario_calificacion TEXT,
+    fecha_finalizacion DATETIME,
+    FOREIGN KEY (id_cliente) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_profesional) REFERENCES Profesionales(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_ubicacion) REFERENCES UbicacionesGuardadas(id) ON DELETE SET NULL
+  )
+`);
+
+// Tabla para historial de cambios de estado
+db.run(`
+  CREATE TABLE IF NOT EXISTS ServicioHistorial (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_servicio INTEGER NOT NULL,
+    estado_anterior TEXT,
+    estado_nuevo TEXT NOT NULL,
+    fecha_cambio DATETIME DEFAULT CURRENT_TIMESTAMP,
+    motivo_cambio TEXT,
+    id_usuario_cambio INTEGER, 
+    FOREIGN KEY (id_servicio) REFERENCES Servicios(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_usuario_cambio) REFERENCES usuarios(id) ON DELETE SET NULL
+  )
+`);
+
+// Tabla para mensajes relacionados con un servicio
+db.run(`
+  CREATE TABLE IF NOT EXISTS ServicioMensajes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_servicio INTEGER NOT NULL,
+    id_usuario INTEGER NOT NULL,  
+    mensaje TEXT NOT NULL,
+    fecha_envio DATETIME DEFAULT CURRENT_TIMESTAMP,
+    leido BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (id_servicio) REFERENCES Servicios(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id) ON DELETE CASCADE
+  )
+`);
+  // Crear índice para búsquedas más rápidas
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_ubicacion_usuario 
+    ON UbicacionTiempoReal(id_usuario)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_ubicaciones_guardadas_usuario 
+    ON UbicacionesGuardadas(id_usuario)
+  `);
+
+ 
    db.run(`
     CREATE TABLE IF NOT EXISTS Profesionales (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,6 +237,8 @@ db.serialize(() => {
       FOREIGN KEY (id_profesional) REFERENCES Profesionales(id) ON DELETE CASCADE
     )
   `);
+
+ 
 });
 
 module.exports = db;
