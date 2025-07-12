@@ -8,4 +8,4 @@ router.get('/admin/CheckBlocked',isUserBlocked)
 
 
 
-mopdule.exports = router;
+module.exports = router;
