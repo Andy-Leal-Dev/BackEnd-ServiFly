@@ -13,7 +13,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
 });
 
 db.serialize(() => {
-   db.run(`
+ db.run(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nombre TEXT NOT NULL,
@@ -31,9 +31,18 @@ db.serialize(() => {
       idgoogle INTEGER,
       codeverify INTEGER,
       emailverify INTEGER,
+      is_blocked BOOLEAN DEFAULT FALSE,
       FOREIGN KEY (id_profesional) REFERENCES Profesionales(id)
     )
   `);
+  
+  // Verificar y agregar columna si no existe (para migraciones) ESTO ES OPCIONAL, andy elige tu si se mantiene esto o q
+  db.get("PRAGMA table_info(usuarios)", (err, columns) => {
+    const hasIsBlocked = columns.some(col => col.name === 'is_blocked');
+    if (!hasIsBlocked) {
+      db.run("ALTER TABLE usuarios ADD COLUMN is_blocked BOOLEAN DEFAULT FALSE");
+    }
+  });
 
   // Tabla para ubicación en tiempo real
   db.run(`
