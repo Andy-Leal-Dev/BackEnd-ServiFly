@@ -11,15 +11,18 @@ router.put('/updateprofile', authMiddleware, uploadProfileMiddleware, userContro
 router.post('/verify-email-code', authMiddleware, userController.verifyEmailCode);
 
 
-// Direcciones
-router.get('/direcciones', authMiddleware, userController.getAddresses);
-router.post('/direcciones', authMiddleware, userController.addAddress);
-router.put('/direcciones/:id', authMiddleware, userController.updateAddress);
-router.delete('/direcciones/:id', authMiddleware, userController.deleteAddress);
+router.post('/ubicacion', authMiddleware, userController.updateUserLocation);
+
+router.get('/direcciones', authMiddleware, userController.getSavedAddresses);
+router.post('/direcciones', authMiddleware, userController.addSavedAddress);
+router.put('/direcciones/:id', authMiddleware, userController.updateSavedAddress);
+router.delete('/direcciones/:id', authMiddleware, userController.deleteSavedAddress);
+router.put('/direcciones/:id/set-principal', authMiddleware, userController.setAsPrimaryAddress);
 
 // Favoritos
 router.get('/favoritos', authMiddleware, userController.getFavorites);
 router.post('/favoritos/:profesionalId', authMiddleware, userController.addFavorite);
 router.delete('/favoritos/:profesionalId', authMiddleware, userController.removeFavorite);
+
 
 module.exports = router;
