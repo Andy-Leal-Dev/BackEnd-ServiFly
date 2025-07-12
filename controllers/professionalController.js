@@ -213,7 +213,7 @@ exports.uploadKYCDocuments = (req, res) => {
     const idImagePath = path.relative(process.cwd(), idImageFile.path);
     const selfieImagePath = path.relative(process.cwd(), selfieImageFile.path);
 
-    db.all(
+    db.get(
         `SELECT p.id, p.is_verificado 
          FROM Profesionales p 
          JOIN usuarios u ON p.id_usuario = u.id 
@@ -222,7 +222,6 @@ exports.uploadKYCDocuments = (req, res) => {
         (err, professional) => {
             if (err) return handleDbError(res, err);
             if (!professional) {
-                console.log(professional)
                 return res.status(400).json({ error: 'Primero complete el registro profesional' });
             }
             if (professional.is_verificado) {
