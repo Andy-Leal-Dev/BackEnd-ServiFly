@@ -162,92 +162,140 @@ Configuración especializada para fotos de perfil:
 
 # Especificación de API
 
-## Autenticación (`auth/`)
+## Autenticación (`/auth`)
 
-
-| Metodo | Enpoint | Descripcion |Parametros | Respuestas | 
-| :------| :-------| :-----------| :-------- | :--------- | 
-| `POST` | `/registro` |Registro de nuevo usuario | `{ nombre, telefono, email, password, fecha_nacimiento }` | `	{ message, usuario}` | 
-| `POST` | `/verifyCode` | Verificación de código de registro | `{ email, code }` | ` { message }` |
-| `POST` | `/login` | Inicio de sesión | `{ email, password }` | `{ message, usuario, token }` | 
-| `POST` | `/emailsend` | Solicitud de recuperación de contraseña | `{ email }` | `{ message }` | 
-| `POST` | `/resetCode` | Verificación de código de recuperación | `{ email, code }` | `{ message }` |
-| `POST` | `	/resetPassword` | Restablecimiento de contraseña | `{ email, newPassword }` | `{ message }` | 
-
+| Método | Endpoint      | Descripción   | Parámetros    | Respuestas    | Requiere Auth |
+|--------|---------------|---------------|---------------|---------------|---------------|
+| `POST` | `/registro`| Registro de nuevo usuario| `{ nombre, telefono, email, password, fecha_nacimiento }` | `{ message, usuario }` | - |
+| `POST` | `/verifyCode`| Verificación de código de registro| `{ email, code }`| `{ message }`| - |
+| `POST` | `/login`| Inicio de sesión| `{ email, password }`| `{ message, usuario, token }` | - |
+| `POST` | `/emailsend` | Solicitud de recuperación de contraseña| `{ email }`| `{ message }`| - |
+| `POST` | `/resetCode`      | Verificación de código de recuperación      | `{ email, code }`                              | `{ message }`             | - |
+| `POST` | `/resetPassword`  | Restablecimiento de contraseña              | `{ email, newPassword }`                       | `{ message }`             | - |
 
 ## Usuarios (`/user`)
 
-
-| Metodo | Enpoint | Descripcion |Parametros | Respuestas | 
-| :------| :-------| :-----------| :-------- | :--------- | 
-| `GET` | `/perfil` |	Obtener perfil básico | `-` | `Perfil básico` |
-| `GET` | `/perfil/profesional` | Obtener perfil profesional | `-` | `Perfil profesional completo` | 
-| `PUT` | `/updateprofile` | 	Actualizar perfil | `Multipart (campos opcionales + foto)` | `{ message, user }` | 
-| `POST` | `/verify-email-code` | Verificar cambio de email | `{ code, newEmail }` | `{ message, user }` | 
-| `POST` | `/ubicacion` | Actualizar ubicación | `{ latitud, longitud, precision }` | `{ success, message, data }` |
-| `GET` | `/direcciones` |	Obtener direcciones | `-` | `Array de direcciones` | 
-| `POST` | `/direcciones` |Agregar dirección | `{ latitud, longitud, precision }` | `{ message, address }` | 
-| `PUT` | `/direcciones/:id` | Actualizar dirección | `{ title, address, latitude, longitude, country, isPrimary }` | `{ message, address }` | 
-| `DELETE` | `/direcciones/:id` | 	Eliminar dirección | `-` | `{ message, deletedId }` |
-| `PUT` | `/direcciones/:id/set-principal` | Establecer dirección principal| `-` | `{ message, primaryAddressId }` | 
-| `GET` | `/favoritos` | Obtener favoritos | `-` | `Array de profesionales favoritos` | 
-| `GET` | `	/favoritos/:professionalId/check` | Verificar favorito | `-` | `	{ isFavorite }` | 
-| `POST` | `	/favoritos/:professionalId` |	Agregar favorito| `-` | `{ message, isFavorite }` | 
-| `DELETE` | `	/favoritos/:professionalId` | 	Eliminar favorito | `-` | `	{ message, isFavorite }` | 
-  
+| Método | Endpoint      | Descripción   | Parámetros    | Respuestas    | Requiere Auth |
+|--------|---------------|---------------|---------------|---------------|---------------| - |
+| `GET`  | `/perfil`     | Obtener perfil básico| -| `Perfil básico`                     | - |
+| `GET`  | `/perfil/profesional`| Obtener perfil profesional| -| `Perfil profesional completo`| - |
+| `PUT`  | `/updateprofile` | Actualizar perfil| Multipart (campos opcionales + foto)| `{ message, user }`| - |
+| `POST` | `/verify-email-code`| Verificar cambio de email| `{ code, newEmail }`| `{ message, user }`| - |
+| `POST` | `/ubicacion`| Actualizar ubicación| `{ latitud, longitud, precision }`| `{ success, message, data }`| - |
+| `GET`  | `/direcciones`| Obtener direcciones| -| `Array de direcciones`| - |
+| `POST` | `/direcciones`| Agregar dirección| `{ title, address, latitude, longitude, country }` | `{ message, address }`| - |
+| `PUT`  | `/direcciones/:id`| Actualizar dirección| `{ title, address, latitude, longitude, country, isPrimary }` | `{ message, address }` | - |
+| `DELETE`| `/direcciones/:id`| Eliminar dirección| -| `{ message, deletedId }`| - |
+| `PUT`  | `/direcciones/:id/set-principal`| Establecer dirección principal | -| `{ message, primaryAddressId }`     | - |
+| `GET`  | `/favoritos`| Obtener favoritos| -| `Array de profesionales favoritos`  | - |
+| `GET`  | `/favoritos/:professionalId/check`| Verificar favorito  | -| `{ isFavorite }` | - |
+| `POST` | `/favoritos/:professionalId`| Agregar favorito | -| `{ message, isFavorite }`| - |
+| `DELETE`| `/favoritos/:professionalId`| Eliminar favorito| -| `{ message, isFavorite }`| - |
 
 ## Profesionales (`/professional`)
 
-
-| Metodo | Enpoint | Descripcion |Parametros | Respuestas | 	Requiere Auth  |
-| :------| :-------| :-----------| :-------- | :--------- | :--------------- |
-| `GET` | `/registro` |Registro de nuevo usuario | `api_key` | `string` |
-| `POST` | `/verifyCode` | Verificación de código de registro | `api_key` | `string` | 
-| `POST` | `/login` | Inicio de sesión | `api_key` | `string` |
-| `POST` | `/emailsend` | Solicitud de recuperación de contraseña | `api_key` | `string` | 
-| `POST` | `/resetCode` | Verificación de código de recuperación | `api_key` | `string` | 
-| `POST` | `	/resetPassword` | Restablecimiento de contraseña | `api_key` | `string` | 
-| `POST` | `/registro` |Registro de nuevo usuario | `api_key` | `string` |
-| `POST` | `/verifyCode` | Verificación de código de registro | `api_key` | `string` | 
-| `POST` | `/login` | Inicio de sesión | `api_key` | `string` |
-| `POST` | `/emailsend` | Solicitud de recuperación de contraseña | `api_key` | `string` | 
-| `POST` | `/resetCode` | Verificación de código de recuperación | `api_key` | `string` | 
-| `POST` | `	/resetPassword` | Restablecimiento de contraseña | `api_key` | `string` |
-| `POST` | `	/resetPassword` | Restablecimiento de contraseña | `api_key` | `string` |
+| Método | Endpoint      | Descripción   | Parámetros    | Respuestas    | Requiere Auth |
+|--------|---------------|---------------|---------------|---------------|---------------|
+| `GET`  | `/professions`                         | Obtener lista de oficios                        | -                                              | `{ professions }`                   | No            |
+| `GET`  | `/professions-specialties`             | Obtener oficios y especialidades               | -                                              | `{ professions, specialties }`      | No            |
+| `POST` | `/signup/step1`                        | Paso 1: Selección de oficios y especialidades   | `{ professions, specialties }`                 | `{ message, nextStep, data }`       | Sí            |
+| `POST` | `/signup/step2`                        | Paso 2: Completar información profesional       | `{ description, experience, education, certifications, ratePerHour, serviceRadius, availability, paymentMethods }` | `{ message, nextStep, professionalId }` | Sí |
+| `POST` | `/kyc/upload`                          | Subir documentos KYC                            | Multipart (idImage, selfieImage)               | `{ message, isVerified }`           | Sí            |
+| `GET`  | `/kyc/status`                          | Obtener estado de verificación KYC              | -                                              | `{ isProfessional, isVerified, ... }` | Sí        |
+| `POST` | `/update/location`                     | Actualizar ubicación profesional                | `{ latitud, longitud, estado_activo }`         | `{ success, message, data }`        | Sí            |
+| `GET`  | `/list`                                | Obtener todos los profesionales                 | -                                              | `Lista de profesionales`            | No            |
+| `GET`  | `/list/by-profession/:profession`      | Obtener profesionales por oficio               | -                                              | `Lista de profesionales`            | No            |
+| `GET`  | `/list/by-payment/:paymentMethod`      | Obtener profesionales por método de pago       | -                                              | `Lista de profesionales`            | No            |
+| `GET`  | `/list/nearby`                         | Obtener profesionales cercanos                 | Query: `?radius=10` (radio en km)              | `Lista de profesionales`            | Sí            |
+| `GET`  | `/ProList`                             | Obtener lista de profesionales (alternativa)    | -                                              | `Lista de profesionales`            | No            |
+| `GET`  | `/get/:id`                             | Obtener profesional por ID                      | -                                              | `Detalles del profesional`          | No            |
 
 ## Reseñas (`/reviews`)
 
-
-| Metodo | Enpoint | Descripcion |Parametros | Respuestas | 	Requiere Auth  |
-| :------| :-------| :-----------| :-------- | :--------- | :--------------- |
-| `POST` | `/registro` |Registro de nuevo usuario | `api_key` | `string` | 
-| `POST` | `/verifyCode` | Verificación de código de registro | `api_key` | `string` | 
-| `POST` | `/login` | Inicio de sesión | `api_key` | `string` | 
-| `POST` | `/emailsend` | Solicitud de recuperación de contraseña | `api_key` | `string` | 
-| `POST` | `/resetCode` | Verificación de código de recuperación | `api_key` | `string` |
-| `POST` | `	/resetPassword` | Restablecimiento de contraseña | `api_key` | `string` | 
+| Método | Endpoint      | Descripción   | Parámetros    | Respuestas    | Requiere Auth |
+|--------|---------------|---------------|---------------|---------------|---------------|
+| `POST` | `/`                                    | Crear una nueva reseña                          | `{ id_profesional, calificacion, comentario, id_servicio }` | `{ message, resena, profesional }` | Sí            |
+| `POST` | `/:id/respond`                         | Responder a una reseña                          | `{ respuesta }`                                 | `{ message, resena }`               | Sí            |
+| `GET`  | `/professional/:id`                    | Obtener reseñas de un profesional               | Query: `?limit=10&offset=0`                    | `{ resenas, total, ... }`           | Sí            |
+| `GET`  | `/user`                                | Obtener reseñas dejadas por el usuario          | Query: `?limit=10&offset=0`                    | `{ resenas, total, ... }`           | Sí            |
+| `GET`  | `/:id/resenas/resumen`                 | Obtener resumen de reseñas de un profesional    | -                                              | `{ ultimas_resenas, total_resenas, promedio_calificacion, profesional }` | Sí |
 
 ## Servicios (`/services`)
 
-
-| Metodo | Enpoint | Descripcion |Parametros | Respuestas | 	Requiere Auth  |
-| :------| :-------| :-----------| :-------- | :--------- | :--------------- |
-| `POST` | `/registro` |Registro de nuevo usuario | `api_key` | `string` | 
-| `POST` | `/verifyCode` | Verificación de código de registro | `api_key` | `string` | 
-| `POST` | `/login` | Inicio de sesión | `api_key` | `string` | 
-| `POST` | `/emailsend` | Solicitud de recuperación de contraseña | `api_key` | `string` |
-| `POST` | `/resetCode` | Verificación de código de recuperación | `api_key` | `string` | 
-| `POST` | `	/resetPassword` | Restablecimiento de contraseña | `api_key` | `string` | 
-
+| Método | Endpoint      | Descripción   | Parámetros    | Respuestas    | Requiere Auth |
+|--------|---------------|---------------|---------------|---------------|---------------|
+| `POST` | `/create`                              | Crear un nuevo servicio                         | `{ id_profesional, fecha_servicio, hora_servicio, id_ubicacion, notas_adicionales }` | `{ message, servicio }` | Sí |
+| `GET`  | `/:role`                               | Obtener servicios del usuario                   | `role` puede ser 'cliente' o 'profesional'     | `{ success, count, servicios }`     | Sí            |
+| `GET`  | `/by/:id`                              | Obtener detalles de un servicio                 | -                                              | `{ servicio }`                      | Sí            |
+| `PUT`  | `/:id/status`                          | Actualizar estado de un servicio                | `{ estado, motivo, precio }`                   | `{ message, servicio }`             | Sí            |
+| `GET`  | `/history/inactive`                    | Obtener servicios inactivos (historial)         | -                                              | `{ success, count, services }`      | Sí            |
+| `POST` | `/:id/complete-rate`                   | Calificar servicio completado                   | `{ serviceRating, professionalRating, comment }` | `{ success, message, data }`        | Sí            |
 
 ## Administración (`/admin`)
 
+| Método | Endpoint      | Descripción   | Parámetros    | Respuestas    | Requiere Auth |
+|--------|---------------|---------------|---------------|---------------|---------------|
+| `GET`  | `/getClients`                          | Obtener todos los clientes                      | -                                              | `Lista de clientes`                 | Sí            |
+| `GET`  | `/getPro`                              | Obtener todos los profesionales                 | -                                              | `Lista de profesionales`            | Sí            |
+| `GET`  | `/checkBlocked`                        | Verificar si usuario está bloqueado             | -                                              | `{ isBlocked }`                     | Sí            |
+| `PUT`  | `/blockUser`                           | Bloquear/desbloquear usuario                    | `{ userId, block }`                            | `{ message }`                       | Sí            |
+| `GET`  | `/services`                            | Obtener servicios aceptados/completados         | -                                              | `Lista de servicios`                | Sí            |
 
-| Metodo | Enpoint | Descripcion |Parametros | Respuestas | 	Requiere Auth  |
-| :------| :-------| :-----------| :-------- | :--------- | :--------------- |
-| `POST` | `/registro` |Registro de nuevo usuario | `api_key` | `string` | 
-| `POST` | `/verifyCode` | Verificación de código de registro | `api_key` | `string` | 
-| `POST` | `/login` | Inicio de sesión | `api_key` | `string` | 
-| `POST` | `/emailsend` | Solicitud de recuperación de contraseña | `api_key` | `string` | 
-| `POST` | `/resetCode` | Verificación de código de recuperación | `api_key` | `string` | 
-| `POST` | `	/resetPassword` | Restablecimiento de contraseña | `api_key` | `string` | 
+
+# Descripción de Archivos Controladores
+
+## `adminController.js`
+Controlador para operaciones administrativas del sistema:
+- **GetClients**: Obtiene todos los usuarios clientes registrados
+- **GetProfesionales**: Recupera todos los profesionales con sus datos completos
+- **isUserBlocked**: Verifica si un usuario está bloqueado
+- **toggleUserBlock**: Activa/desactiva el bloqueo de un usuario
+- **services**: Obtiene todos los servicios pendientes y completados
+- *Propósito principal*: Gestionar usuarios, profesionales y servicios desde el rol de administrador
+
+## `authController.js`
+Controlador para autenticación y seguridad:
+- **register**: Registra nuevos usuarios y envía código de verificación
+- **verifyCode**: Valida códigos de registro/recuperación
+- **login**: Gestiona el inicio de sesión y genera tokens JWT
+- **forgotPassword**: Maneja solicitudes de recuperación de contraseña
+- **resetPassword**: Actualiza contraseñas de usuarios
+- *Propósito principal*: Gestionar todo el ciclo de autenticación y seguridad de usuarios
+
+## `professionalController.js`
+Controlador para operaciones de profesionales:
+- **getProfessions**: Lista de oficios disponibles
+- **startProfessionalSignup**: Inicia proceso de registro profesional
+- **completeProfessionalInfo**: Completa información profesional
+- **uploadKYCDocuments**: Gestiona subida de documentos de verificación
+- **getProfessionalList**: Obtiene listado completo de profesionales
+- **getNearbyProfessionals**: Busca profesionales cercanos
+- *Propósito principal*: Gestionar todo el ciclo de vida de profesionales y sus operaciones
+
+## `reviewController.js`
+Controlador para gestión de reseñas:
+- **createReview**: Crea nuevas reseñas de profesionales
+- **respondToReview**: Permite a profesionales responder reseñas
+- **getProfessionalReviews**: Obtiene reseñas de un profesional
+- **getUserReviews**: Recupera reseñas hechas por un usuario
+- **getProfessionalReviewsSummary**: Genera resumen estadístico de reseñas
+- *Propósito principal*: Gestionar el sistema de valoraciones y reseñas de servicios
+
+## `serviceController.js`
+Controlador para operaciones de servicios:
+- **createService**: Crea nuevos servicios solicitados
+- **getUserServices**: Obtiene servicios asociados a un usuario
+- **updateServiceStatus**: Actualiza estados de servicios (aceptado/completado)
+- **getServiceById**: Recupera detalles de un servicio específico
+- **rateServiceAndComplete**: Califica servicios completados
+- *Propósito principal*: Gestionar todo el ciclo de vida de los servicios ofrecidos
+
+## `userController.js`
+Controlador para operaciones de usuarios:
+- **getProfile**: Obtiene perfil básico de usuario
+- **updateProfile**: Actualiza información de perfil
+- **verifyEmailCode**: Valida cambios de email
+- **updateUserLocation**: Gestiona ubicación en tiempo real
+- **getSavedAddresses**: Maneja direcciones guardadas
+- **getFavorites**: Gestiona profesionales favoritos
+- *Propósito principal*: Gestionar todas las operaciones relacionadas con usuarios regulares
