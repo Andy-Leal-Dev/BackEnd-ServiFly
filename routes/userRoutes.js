@@ -20,10 +20,12 @@ router.put('/direcciones/:id', authMiddleware, checkBlockedUser, userController.
 router.delete('/direcciones/:id', authMiddleware, checkBlockedUser, userController.deleteSavedAddress);
 router.put('/direcciones/:id/set-principal', authMiddleware, checkBlockedUser, userController.setAsPrimaryAddress);
 
+
 // Favoritos
 router.get('/favoritos', authMiddleware, checkBlockedUser, userController.getFavorites);
-router.post('/favoritos/:profesionalId',  authMiddleware, checkBlockedUser, userController.addFavorite);
-router.delete('/favoritos/:profesionalId', authMiddleware, checkBlockedUser, userController.removeFavorite);
+router.get('/favoritos/:professionalId/check', authMiddleware, checkBlockedUser, userController.checkFavorite);
+router.post('/favoritos/:professionalId', authMiddleware, checkBlockedUser, userController.addFavorite);
+router.delete('/favoritos/:professionalId', authMiddleware, checkBlockedUser, userController.removeFavorite);
 
 
 module.exports = router;

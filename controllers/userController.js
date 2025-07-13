@@ -1070,3 +1070,111 @@ exports.setAsPrimaryAddress = (req, res) => {
         });
     });
 };
+
+// Obtener profesionales favoritos
+exports.getFavorites = (req, res) => {
+    const userId = req.user.id;
+
+    const query = `
+        SELECT 
+            p.id AS professionalId,
+            p.descripcion,
+            p.tarifa_por_hora,
+            p.promedio_calificacion,
+            p.total_resenias,
+            u.nombre,
+            u.foto_perfil,
+            GROUP_CONCAT(DISTINCT o.nombre) AS oficios,
+            f.fecha_agregado
+        FROM Favoritos f
+        JOIN Profesionales p ON f.id_profesional = p.id
+        JOIN usuarios u ON p.id_usuario = u.id
+        LEFT JOIN Prof_Oficio po ON p.id = po.id_profesional
+        LEFT JOIN Oficios o ON po.id_oficio = o.id
+        WHERE f.id_usuario = ?
+        GROUP BY p.id
+        ORDER BY f.fecha_agregado DESC
+    `;
+
+    db.all(query, [userId], (err, favorites) => {
+        if (err) return handleDbError(res, err);
+        
+        // Formatear los oficios como array
+        const formattedFavorites = favorites.map(fav => ({
+            ...fav,
+            oficios: fav.oficios ? fav.oficios.split(',') : [],
+            isFavorite: true // Siempre true ya que son los favoritos del usuario
+        }));
+
+        res.status(200).json(formattedFavorites);
+    });
+};
+
+// Verificar si un profesional es favorito
+exports.checkFavorite = (req, res) => {
+    const userId = req.user.id;
+    const { professionalId } = req.params;
+
+    const query = `
+        SELECT id 
+        FROM Favoritos 
+        WHERE id_usuario = ? AND id_profesional = ?
+    `;
+
+    db.get(query, [userId, professionalId], (err, row) => {
+        if (err) return handleDbError(res, err);
+        res.status(200).json({ isFavorite: !!row });
+    });
+};
+
+// Agregar profesional a favoritos
+exports.addFavorite = (req, res) => {
+    const userId = req.user.id;
+    const { professionalId } = req.params;
+
+    // Verificar que el profesional existe
+    db.get(`SELECT id FROM Profesionales WHERE id = ?`, [professionalId], (err, row) => {
+        if (err) return handleDbError(res, err);
+        if (!row) return res.status(404).json({ error: 'Profesional no encontrado' });
+
+        // Verificar si ya es favorito
+        db.get(`SELECT id FROM Favoritos WHERE id_usuario = ? AND id_profesional = ?`, 
+              [userId, professionalId], (err, favorite) => {
+            if (err) return handleDbError(res, err);
+            if (favorite) return res.status(400).json({ error: 'Este profesional ya está en tus favoritos' });
+
+            const insertQuery = `
+                INSERT INTO Favoritos (id_usuario, id_profesional)
+                VALUES (?, ?)
+            `;
+
+            db.run(insertQuery, [userId, professionalId], function(err) {
+                if (err) return handleDbError(res, err);
+
+                res.status(201).json({ 
+                    message: 'Profesional agregado a favoritos exitosamente',
+                    isFavorite: true
+                });
+            });
+        });
+    });
+};
+
+// Eliminar profesional de favoritos
+exports.removeFavorite = (req, res) => {
+    const userId = req.user.id;
+    const { professionalId } = req.params;
+
+    db.run(`DELETE FROM Favoritos WHERE id_usuario = ? AND id_profesional = ?`, 
+          [userId, professionalId], function(err) {
+        if (err) return handleDbError(res, err);
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'Profesional no encontrado en tus favoritos' });
+        }
+
+        res.status(200).json({ 
+            message: 'Profesional eliminado de favoritos exitosamente',
+            isFavorite: false
+        });
+    });
+};
