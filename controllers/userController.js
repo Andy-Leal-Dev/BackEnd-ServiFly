@@ -1,4 +1,4 @@
-const db = require('../db/users');
+const db = require('../models/users');
 const fs = require('fs');
 const path = require('path');
 const nodemailer = require('nodemailer');

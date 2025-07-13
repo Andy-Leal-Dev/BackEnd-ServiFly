@@ -17,7 +17,7 @@ const serviceRouter = require('./routes/serviceRoutes');
 const adminRouter = require('./routes/adminroutes')
 const morgan = require('morgan');
 const path = require('path');
-const db = require('./db/users');
+const db = require('./models/users');
 const reviewRouter = require('./routes/reviewRoutes');
 // Configuración de Socket.io
 io.on('connection', (socket) => {

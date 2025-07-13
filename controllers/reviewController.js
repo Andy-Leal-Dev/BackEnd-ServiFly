@@ -1,5 +1,4 @@
-const db = require('../db/users');
-
+const db = require('../models/users');
 // Helper para manejar errores de la base de datos
 const handleDbError = (res, err, message = 'Error en la base de datos') => {
     console.error(err);

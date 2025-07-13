@@ -1,5 +1,5 @@
 // adminControllers.js (funciones completadas)
-const db = require('../db/users');
+const db = require('../models/users');
 
 exports.GetClients = async (req, res) => {
   try {
