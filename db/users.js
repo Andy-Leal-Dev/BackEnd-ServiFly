@@ -102,6 +102,24 @@ db.run(`
   )
 `);
 
+db.run(`
+  CREATE TABLE IF NOT EXISTS Favoritos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_usuario INTEGER NOT NULL,
+    id_profesional INTEGER NOT NULL,
+    fecha_agregado DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (id_usuario, id_profesional),
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_profesional) REFERENCES Profesionales(id) ON DELETE CASCADE
+  )
+`);
+
+// Crear índice para búsquedas más rápidas
+db.run(`
+  CREATE INDEX IF NOT EXISTS idx_favoritos_usuario 
+  ON Favoritos(id_usuario)
+`);
+
   // Crear índice para búsquedas más rápidas
   db.run(`
     CREATE INDEX IF NOT EXISTS idx_ubicacion_usuario 
@@ -204,6 +222,29 @@ db.run(`
       FOREIGN KEY (id_oficio) REFERENCES Oficios(id)
     )
   `);
+
+  db.run(`
+  CREATE TABLE IF NOT EXISTS Resenas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_profesional INTEGER NOT NULL,
+    id_usuario INTEGER NOT NULL,
+    id_servicio INTEGER,
+    calificacion INTEGER NOT NULL CHECK(calificacion BETWEEN 1 AND 5),
+    comentario TEXT,
+    respuesta TEXT,
+    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    fecha_respuesta DATETIME,
+    FOREIGN KEY (id_profesional) REFERENCES Profesionales(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_servicio) REFERENCES Servicios(id) ON DELETE SET NULL
+  )
+`);
+
+// Crear índice para búsquedas más rápidas
+db.run(`
+  CREATE INDEX IF NOT EXISTS idx_resenas_profesional 
+  ON Resenas(id_profesional)
+`);
 
   // Tabla Prof_Especialidad
   db.run(`
