@@ -176,7 +176,7 @@ Configuración especializada para fotos de perfil:
 ## Usuarios (`/user`)
 
 | Método | Endpoint      | Descripción   | Parámetros    | Respuestas    | Requiere Auth |
-|--------|---------------|---------------|---------------|---------------|---------------| - |
+|--------|---------------|---------------|---------------|---------------|---------------| 
 | `GET`  | `/perfil`     | Obtener perfil básico| -| `Perfil básico`                     | - |
 | `GET`  | `/perfil/profesional`| Obtener perfil profesional| -| `Perfil profesional completo`| - |
 | `PUT`  | `/updateprofile` | Actualizar perfil| Multipart (campos opcionales + foto)| `{ message, user }`| - |
