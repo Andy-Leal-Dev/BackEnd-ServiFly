@@ -18,7 +18,7 @@ const adminRouter = require('./routes/adminroutes')
 const morgan = require('morgan');
 const path = require('path');
 const db = require('./db/users');
-
+const reviewRouter = require('./routes/reviewRoutes');
 // Configuración de Socket.io
 io.on('connection', (socket) => {
   console.log('Nuevo cliente conectado:', socket.id);
@@ -93,7 +93,7 @@ app.use('/user', userRouter);
 app.use('/professional', professionalRouter)
 app.use('/services', serviceRouter);
 app.use('/admin', adminRouter);
-
+app.use('/reviews', reviewRouter);
 // Nueva ruta para obtener historial de mensajes
 app.get('/messages/:serviceId', async (req, res) => {
   try {
