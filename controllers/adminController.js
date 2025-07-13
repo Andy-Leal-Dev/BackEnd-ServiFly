@@ -57,8 +57,6 @@ exports.isUserBlocked = async (userId) => {
   });
 };
 
-
-
 // Bloquear o desbloquear un usuario
 exports.toggleUserBlock = (req, res) => {
   const { userId, block } = req.body;
@@ -84,7 +82,25 @@ exports.toggleUserBlock = (req, res) => {
   });
 };
 
+// Obtener todos los servicios aceptados y completados
+exports.services = (req, res) => {
+  const sql = `
+    SELECT 
+      s.*,
+      u.nombre AS cliente_nombre
+    FROM Servicios s
+    JOIN usuarios u ON s.id_cliente = u.id
+    WHERE s.estado IN ('pendiente', 'completado')
+  `;
 
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      console.error('Error al obtener servicios:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    res.status(200).json(rows);
+  });
+};
 
 // Ejemplo de uso en un middleware:
 // exports.checkBlockedUser = async (req, res, next) => {
