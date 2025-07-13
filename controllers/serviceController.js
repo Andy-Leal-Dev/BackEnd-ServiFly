@@ -154,6 +154,7 @@ exports.getUserServices = async (req, res) => {
                     s.motivo_cancelacion,
                     s.id_cliente,
                     s.id_profesional,
+                    s.activo,
                     u.nombre AS cliente_nombre,
                     u.foto_perfil AS cliente_foto,
                     p.descripcion AS profesional_descripcion,
@@ -183,6 +184,7 @@ exports.getUserServices = async (req, res) => {
                     s.motivo_cancelacion,
                     s.id_cliente,
                     s.id_profesional,
+                    s.activo,
                     p.descripcion AS profesional_descripcion,
                     u.nombre AS profesional_nombre,
                     u.foto_perfil AS profesional_foto,
@@ -234,6 +236,7 @@ exports.getUserServices = async (req, res) => {
                         notas_adicionales: servicio.notas_adicionales,
                         estado: servicio.estado,
                         motivo_cancelacion: servicio.motivo_cancelacion,
+                        activo: servicio.activo,
                         cliente: {
                             id: servicio.id_cliente,
                             nombre: servicio.cliente_nombre,
@@ -259,6 +262,7 @@ exports.getUserServices = async (req, res) => {
                         notas_adicionales: servicio.notas_adicionales,
                         estado: servicio.estado,
                         motivo_cancelacion: servicio.motivo_cancelacion,
+                        activo: servicio.activo,
                         cliente: {
                             id: servicio.id_cliente
                         },
@@ -298,6 +302,7 @@ exports.getUserServices = async (req, res) => {
                         s.motivo_cancelacion,
                         s.id_profesional,
                         s.id_cliente,
+                        s.activo,
                         ug.nombre AS ubicacion_nombre,
                         ug.direccion AS ubicacion_direccion
                     FROM Servicios s
@@ -372,6 +377,7 @@ exports.getUserServices = async (req, res) => {
                 notas_adicionales: servicio.notas_adicionales,
                 estado: servicio.estado,
                 motivo_cancelacion: servicio.motivo_cancelacion,
+                activo: servicio.activo,
                 cliente: servicio.cliente,
                 profesional: servicio.profesional,
                 tipo: 'cliente',
@@ -402,12 +408,22 @@ exports.getUserServices = async (req, res) => {
 exports.updateServiceStatus = async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
-    const { estado, motivo } = req.body;
+    const { estado, motivo, precio } = req.body;
 
     // Validar estado
     const estadosPermitidos = ['pendiente', 'aceptado', 'completado', 'cancelado', 'rechazado'];
     if (!estadosPermitidos.includes(estado)) {
         return res.status(400).json({ error: 'Estado no válido' });
+    }
+
+    // Validar que se proporcione motivo para cancelación/rechazo
+    if ((estado === 'cancelado' || estado === 'rechazado') && !motivo) {
+        return res.status(400).json({ error: 'Se requiere un motivo para cancelar/rechazar' });
+    }
+
+    // Validar que se proporcione precio para completado
+    if (estado === 'completado' && (precio === undefined || precio === null)) {
+        return res.status(400).json({ error: 'Se requiere el precio para completar el servicio' });
     }
 
     try {
@@ -443,9 +459,21 @@ exports.updateServiceStatus = async (req, res) => {
             let query = 'UPDATE Servicios SET estado = ?';
             const params = [estado];
 
-            // Si se completa o cancela, registrar fecha de finalización
-            if (estado === 'completado' || estado === 'cancelado') {
+            // Si se completa, cancela o rechaza, registrar fecha de finalización
+            if (estado === 'completado' || estado === 'cancelado' || estado === 'rechazado') {
                 query += ', fecha_finalizacion = CURRENT_TIMESTAMP';
+            }
+
+            // Si se cancela o rechaza, establecer activo = false y guardar motivo
+            if (estado === 'cancelado' || estado === 'rechazado') {
+                query += ', activo = 0, motivo_cancelacion = ?';
+                params.push(motivo);
+            }
+
+            // Si se completa, guardar el precio
+            if (estado === 'completado') {
+                query += ', precio_total = ?';
+                params.push(precio);
             }
 
             query += ' WHERE id = ?';
@@ -480,7 +508,6 @@ exports.updateServiceStatus = async (req, res) => {
         handleDbError(res, err, 'Error al actualizar el estado del servicio');
     }
 };
-
 // Obtener detalles de un servicio específico
 exports.getServiceById = async (req, res) => {
     // Verificar autenticación
@@ -507,7 +534,6 @@ exports.getServiceById = async (req, res) => {
                     s.notas_adicionales,
                     s.estado,
                     s.motivo_cancelacion,
-
                     s.id_cliente,
                     s.id_profesional,
                     s.id_ubicacion,
@@ -592,6 +618,7 @@ exports.getServiceById = async (req, res) => {
                 fecha_creacion: servicio.fecha_creacion,
                 fecha_servicio: servicio.fecha_servicio,
                 hora_servicio: servicio.hora_servicio,
+                activo: servicio.activo,
                 duracion_estimada: servicio.duracion_estimada,
                 tarifa_total: servicio.tarifa_total,
                 notas_adicionales: servicio.notas_adicionales,
@@ -721,5 +748,196 @@ exports.rateService = async (req, res) => {
 
     } catch (err) {
         handleDbError(res, err, 'Error al calificar el servicio');
+    }
+};
+
+// Obtener todos los servicios inactivos (históricos)
+exports.getInactiveServices = async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        const services = await new Promise((resolve, reject) => {
+            db.all(`
+                SELECT 
+                    s.id,
+                    s.fecha_creacion,
+                    s.fecha_servicio,
+                    s.hora_servicio,
+                    s.estado,
+                    s.motivo_cancelacion,
+                    s.calificacion,
+                    s.comentario_calificacion,
+                    ug.nombre AS ubicacion_nombre,
+                    ug.direccion AS ubicacion_direccion
+                FROM Servicios s
+                LEFT JOIN UbicacionesGuardadas ug ON s.id_ubicacion = ug.id
+                WHERE s.id_cliente = ? 
+                AND s.activo = 0
+            `, [userId], (err, rows) => {
+                if (err) reject(err);
+                resolve(rows || []);
+            });
+        });
+        console.log('Servicios inactivos obtenidos:', services);
+        console.log(userId)
+        res.status(200).json({
+            success: true,
+            count: services.length,
+            services
+        });
+    } catch (err) {
+        console.error('[getInactiveServices] Error:', err);
+        res.status(500).json({
+            success: false,
+            error: 'Error del servidor',
+            message: 'Ocurrió un error al obtener el historial de servicios'
+        });
+    }
+};
+
+// serviceController.js - Agregar este nuevo método
+
+// Calificar un servicio completado y actualizar profesional
+exports.rateServiceAndComplete = async (req, res) => {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { serviceRating, professionalRating, comment } = req.body;
+
+    // Validar calificaciones
+    if (!serviceRating || serviceRating < 1 || serviceRating > 5 ||
+        !professionalRating || professionalRating < 1 || professionalRating > 5) {
+        return res.status(400).json({ 
+            error: 'Las calificaciones deben ser entre 1 y 5',
+            details: {
+                serviceRating: !serviceRating || serviceRating < 1 || serviceRating > 5,
+                professionalRating: !professionalRating || professionalRating < 1 || professionalRating > 5
+            }
+        });
+    }
+
+    try {
+        // Iniciar transacción
+        await new Promise((resolve, reject) => db.run('BEGIN TRANSACTION', err => err ? reject(err) : resolve()));
+
+        // 1. Verificar que el servicio existe, está completado y pertenece al usuario
+        const servicio = await new Promise((resolve, reject) => {
+            db.get(`
+                SELECT id, id_cliente, id_profesional, estado, activo 
+                FROM Servicios 
+                WHERE id = ? AND estado = 'completado' AND activo = 1
+            `, [id], (err, row) => err ? reject(err) : resolve(row));
+        });
+
+        if (!servicio) {
+            await new Promise((resolve, reject) => db.run('ROLLBACK', err => err ? reject(err) : resolve()));
+            return res.status(404).json({ 
+                error: 'Servicio no encontrado o no está completado',
+                details: {
+                    exists: !!servicio,
+                    completed: servicio?.estado === 'completado',
+                    active: servicio?.activo === 1
+                }
+            });
+        }
+
+        if (servicio.id_cliente !== userId) {
+            await new Promise((resolve, reject) => db.run('ROLLBACK', err => err ? reject(err) : resolve()));
+            return res.status(403).json({ 
+                error: 'Solo el cliente puede calificar este servicio',
+                details: { isClient: servicio.id_cliente === userId }
+            });
+        }
+
+        // 2. Actualizar la calificación del servicio
+        await new Promise((resolve, reject) => {
+            db.run(`
+                UPDATE Servicios 
+                SET 
+                    calificacion = ?, 
+                    comentario_calificacion = ?,
+                    activo = 0,
+                    fecha_finalizacion = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `, [serviceRating, comment || null, id], err => err ? reject(err) : resolve());
+        });
+
+        // 3. Obtener el promedio actual del profesional
+        const profesional = await new Promise((resolve, reject) => {
+            db.get(`
+                SELECT 
+                    promedio_calificacion, 
+                    total_resenias 
+                FROM Profesionales 
+                WHERE id = ?
+            `, [servicio.id_profesional], (err, row) => err ? reject(err) : resolve(row));
+        });
+
+        if (!profesional) {
+            await new Promise((resolve, reject) => db.run('ROLLBACK', err => err ? reject(err) : resolve()));
+            return res.status(404).json({ error: 'Profesional no encontrado' });
+        }
+
+        // 4. Calcular nuevo promedio
+        const totalResenias = profesional.total_resenias + 1;
+        const nuevoPromedio = (
+            (profesional.promedio_calificacion * profesional.total_resenias) + 
+            professionalRating
+        ) / totalResenias;
+
+        // 5. Actualizar el profesional
+        await new Promise((resolve, reject) => {
+            db.run(`
+                UPDATE Profesionales
+                SET 
+                    promedio_calificacion = ?,
+                    total_resenias = ?
+                WHERE id = ?
+            `, [nuevoPromedio, totalResenias, servicio.id_profesional], err => err ? reject(err) : resolve());
+        });
+
+        // Commit de la transacción
+        await new Promise((resolve, reject) => db.run('COMMIT', err => err ? reject(err) : resolve()));
+
+        // Obtener el servicio actualizado para la respuesta
+        const servicioActualizado = await new Promise((resolve, reject) => {
+            db.get(`
+                SELECT 
+                    s.id,
+                    s.calificacion,
+                    s.comentario_calificacion,
+                    s.activo,
+                    p.promedio_calificacion AS profesional_promedio,
+                    p.total_resenias AS profesional_total_resenias
+                FROM Servicios s
+                JOIN Profesionales p ON s.id_profesional = p.id
+                WHERE s.id = ?
+            `, [id], (err, row) => err ? reject(err) : resolve(row));
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Servicio calificado y finalizado exitosamente',
+            data: {
+                servicio: {
+                    id: servicioActualizado.id,
+                    calificacion: servicioActualizado.calificacion,
+                    comentario: servicioActualizado.comentario_calificacion,
+                    activo: servicioActualizado.activo === 1
+                },
+                profesional: {
+                    promedio_calificacion: servicioActualizado.profesional_promedio,
+                    total_resenias: servicioActualizado.profesional_total_resenias
+                }
+            }
+        });
+
+    } catch (err) {
+        // Rollback en caso de error
+        await new Promise((resolve, reject) => db.run('ROLLBACK', err => err ? reject(err) : resolve()));
+        console.error('Error en rateServiceAndComplete:', err);
+        res.status(500).json({ 
+            error: 'Error al calificar el servicio',
+            details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 };

@@ -16,9 +16,16 @@ router.get('/by/:id', authenticationToken, checkBlockedUser, serviceController.g
 // Actualizar estado de un servicio
 router.put('/:id/status', authenticationToken, checkBlockedUser, serviceController.updateServiceStatus);
 
-
+router.get('/history/inactive', authenticationToken, checkBlockedUser, serviceController.getInactiveServices);
 
 // Calificar un servicio completado
-router.post('/:id/rate', authenticationToken,checkBlockedUser,  serviceController.rateService);
+// serviceRoutes.js - Agregar esta nueva ruta
+
+router.post(
+    '/:id/complete-rate', 
+    authenticationToken, 
+    checkBlockedUser, 
+    serviceController.rateServiceAndComplete
+);
 
 module.exports = router;
