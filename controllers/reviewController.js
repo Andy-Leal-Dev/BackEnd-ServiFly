@@ -22,7 +22,7 @@ exports.createReview = async (req, res) => {
     try {
         // Verificar que el profesional existe
         const profesional = await new Promise((resolve, reject) => {
-            db.get('SELECT id FROM Profesionales WHERE id = ?', [id_profesional], (err, row) => {
+            db.get('SELECT id_usuario FROM Profesionales WHERE id_usuario = ?', [id_profesional], (err, row) => {
                 if (err) reject(err);
                 resolve(row);
             });
